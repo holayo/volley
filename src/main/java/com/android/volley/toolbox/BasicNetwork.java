@@ -17,6 +17,7 @@
 package com.android.volley.toolbox;
 
 import android.os.SystemClock;
+import android.util.Log;
 import com.android.volley.AuthFailureError;
 import com.android.volley.Cache;
 import com.android.volley.Cache.Entry;
@@ -39,15 +40,19 @@ import java.net.MalformedURLException;
 import java.net.SocketTimeoutException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
+import org.apache.http.impl.cookie.DateUtils;
 
 /** A network performing Volley requests over an {@link HttpStack}. */
 public class BasicNetwork implements Network {
+    private static final String TAG = BasicNetwork.class.getSimpleName();
+
     protected static final boolean DEBUG = VolleyLog.DEBUG;
 
     private static final int SLOW_REQUEST_THRESHOLD_MS = 3000;
@@ -264,8 +269,19 @@ public class BasicNetwork implements Network {
         }
 
         if (entry.lastModified > 0) {
-            headers.put(
-                    "If-Modified-Since", HttpHeaderParser.formatEpochAsRfc1123(entry.lastModified));
+            String date;
+            try {
+                date = HttpHeaderParser.formatEpochAsRfc1123(entry.lastModified);
+            } catch (AssertionError e) {
+                Log.e(TAG, "got assertion error", e);
+                Date refTime = new Date(entry.lastModified);
+                date = DateUtils.formatDate(refTime);
+            }
+
+            Log.d(TAG, "got cached date " + date);
+            if (date != null) {
+                headers.put("If-Modified-Since", date);
+            }
         }
 
         return headers;
